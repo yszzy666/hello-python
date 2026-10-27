@@ -2,6 +2,10 @@
 
 Python 入门练习仓库 —— 从零开始学编程的记录。
 
+## 在线体验
+
+👉 https://yszzy666.github.io/hello-python/
+
 ## 文件说明
 
 - `hello.py` — 第一个 Python 程序：打招呼、显示今天日期、计算距 2027 年还有多少天
