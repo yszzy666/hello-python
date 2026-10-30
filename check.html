@@ -103,6 +103,19 @@ drop.addEventListener('drop', function(e){
   if (e.dataTransfer.files[0]) 读文件(e.dataTransfer.files[0]);
 });
 
+// 表头经常不在第 1 行（第 1 行可能是"高一(3)班 语文作业提交情况"这种标题）
+function 找表头行(rows){
+  var 线索 = ["姓名", "名字", "学生", "name", "Name"];
+  var 上限 = Math.min(rows.length, 10);
+  for (var i = 0; i < 上限; i++){
+    var 行 = rows[i] || [];
+    var 文字 = 行.map(function(v){ return String(v == null ? "" : v); }).join("|");
+    for (var j = 0; j < 线索.length; j++){
+      if (文字.indexOf(线索[j]) >= 0) return i;
+    }
+  }
+  return 0;
+}
 function 读文件(file){
   if (typeof XLSX === 'undefined'){
     out.innerHTML = '<div class="card"><h2 style="color:#f87171">表格解析库没加载出来</h2><p>你的网络可能连不上 CDN。换个网络（比如手机热点）刷新试试。</p></div>';
@@ -118,8 +131,9 @@ function 读文件(file){
         out.innerHTML = '<div class="card"><p>这个表里没有数据行。</p></div>';
         return;
       }
-      表头 = rows[0].map(function(h){ return String(h).trim(); });
-      数据行 = rows.slice(1);
+            var 头 = 找表头行(rows);
+      表头 = rows[头].map(function(h){ return String(h).trim(); });
+      数据行 = rows.slice(头 + 1);
       填选项();
       算结果();
     } catch(err){
