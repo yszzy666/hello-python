@@ -49,7 +49,7 @@ h1{font-size:22px;font-weight:600;text-align:center}
 <body>
 <div class="wrap">
   <h1>交作业核对器 <span style="font-size:13px;color:#64748b;font-weight:400">v2</span></h1>
-  <p class="sub">把一个 Excel 拖进来，自动分出「交了 / 没交 / 填得看不懂」</p>
+  <p class="sub">把一个 Excel 拖进来，自动分出「交了 / 没交 / 特殊情况」</p>
 
   <div class="drop" id="drop">
     <div class="big">📂</div>
@@ -214,9 +214,9 @@ function 算结果(){
   html += '</div>';
 
   if (看不懂.length){
-    html += '<div class="card unk"><h2>⚠️ 填得看不懂<span class="n">' + 看不懂.length + ' 人</span></h2><p>';
+    html += '<div class="card unk"><h2>⚠️ 特殊情况<span class="n">' + 看不懂.length + ' 人</span></h2><p>';
     html += 看不懂.map(function(x){ return x.姓名 + '<span class="tag">' + x.原值 + '</span>'; }).join('<br>');
-    html += '</p><p style="margin-top:10px;color:#94a3b8;font-size:13px">这些人需要你去问一下，程序不知道他们算不算交了。</p></div>';
+    html += '</p><p style="margin-top:10px;color:#94a3b8;font-size:13px">这些人需要你自己确认一下算不算交了。</p></div>';
   }
 
   html += '<div class="card"><h2 style="color:#94a3b8">合计<span class="n">' + (交了.length + 没交.length + 看不懂.length) + ' 人</span></h2>';
