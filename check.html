@@ -48,7 +48,7 @@ h1{font-size:22px;font-weight:600;text-align:center}
 </head>
 <body>
 <div class="wrap">
-  <h1>交作业核对器</h1>
+  <h1>交作业核对器 <span style="font-size:13px;color:#64748b;font-weight:400">v2</span></h1>
   <p class="sub">把一个 Excel 拖进来，自动分出「交了 / 没交 / 填得看不懂」</p>
 
   <div class="drop" id="drop">
@@ -80,6 +80,8 @@ h1{font-size:22px;font-weight:600;text-align:center}
 var 交了词 = ["是","已交","交了","交","已提交","提交","完成","ok","yes","y","1","true","√","✓","到","到了"];
 // ===== 认可哪些写法算「没交」=====
 var 没交词 = ["否","没交","未交","未提交","未","没","no","n","0","false","×","✗","x"];
+// ===== 哪些行是汇总行，不当人算 =====
+var 汇总词 = /^(合计|总计|小计|总数|共计|合\s*计)/;
 
 var 表头 = [], 数据行 = [];
 
@@ -103,19 +105,35 @@ drop.addEventListener('drop', function(e){
   if (e.dataTransfer.files[0]) 读文件(e.dataTransfer.files[0]);
 });
 
-// 表头经常不在第 1 行（第 1 行可能是"高一(3)班 语文作业提交情况"这种标题）
+// ===== 找表头行 =====
+// 表头经常不在第 1 行：上面可能有"高一(3)班 语文作业提交情况"这种标题，
+// 也可能整行是空的（合并单元格的标题行只有 1 个格子有字）。
+// 所以不猜"第几行"，改成给前 10 行打分：非空格子越多越像表头，带"姓名"字样再加 20 分。
 function 找表头行(rows){
-  var 线索 = ["姓名", "名字", "学生", "name", "Name"];
+  var 线索 = ["姓名","名字","学生","name"];
   var 上限 = Math.min(rows.length, 10);
+  var 最佳 = -1, 最佳分 = -1;
   for (var i = 0; i < 上限; i++){
     var 行 = rows[i] || [];
-    var 文字 = 行.map(function(v){ return String(v == null ? "" : v); }).join("|");
-    for (var j = 0; j < 线索.length; j++){
-      if (文字.indexOf(线索[j]) >= 0) return i;
+    var 非空 = 0, 文字 = [];
+    for (var k = 0; k < 行.length; k++){
+      var v = 行[k];
+      if (v !== null && v !== undefined && String(v).trim() !== ''){
+        非空++;
+        文字.push(String(v).toLowerCase());
+      }
     }
+    if (非空 < 2) continue;          // 只有 1 个格子的，是标题不是表头
+    var 有线索 = 0, 合起来 = 文字.join('|');
+    for (var j = 0; j < 线索.length; j++){
+      if (合起来.indexOf(线索[j]) >= 0){ 有线索 = 1; break; }
+    }
+    var 分 = 非空 + 有线索 * 20;
+    if (分 > 最佳分){ 最佳分 = 分; 最佳 = i; }
   }
-  return 0;
+  return 最佳 >= 0 ? 最佳 : 0;
 }
+
 function 读文件(file){
   if (typeof XLSX === 'undefined'){
     out.innerHTML = '<div class="card"><h2 style="color:#f87171">表格解析库没加载出来</h2><p>你的网络可能连不上 CDN。换个网络（比如手机热点）刷新试试。</p></div>';
@@ -131,8 +149,8 @@ function 读文件(file){
         out.innerHTML = '<div class="card"><p>这个表里没有数据行。</p></div>';
         return;
       }
-            var 头 = 找表头行(rows);
-      表头 = rows[头].map(function(h){ return String(h).trim(); });
+      var 头 = 找表头行(rows);
+      表头 = (rows[头] || []).map(function(h){ return String(h).trim(); });
       数据行 = rows.slice(头 + 1);
       填选项();
       算结果();
@@ -175,12 +193,13 @@ statusSel.addEventListener('change', 算结果);
 function 算结果(){
   var ni = parseInt(nameSel.value, 10);
   var si = parseInt(statusSel.value, 10);
-  var 交了 = [], 没交 = [], 看不懂 = [];
+  var 交了 = [], 没交 = [], 看不懂 = [], 跳过 = [];
 
   for (var r=0;r<数据行.length;r++){
     var row = 数据行[r];
     var 姓名 = String(row[ni] === undefined || row[ni] === null ? '' : row[ni]).trim();
     if (!姓名) continue;
+    if (汇总词.test(姓名)){ 跳过.push(姓名); continue; }
     var 原值 = String(row[si] === undefined || row[si] === null ? '' : row[si]).trim();
     var 值 = 原值.toLowerCase().replace(/\s/g, '');
     if (交了词.indexOf(值) >= 0) 交了.push(姓名);
@@ -200,7 +219,11 @@ function 算结果(){
     html += '</p><p style="margin-top:10px;color:#94a3b8;font-size:13px">这些人需要你去问一下，程序不知道他们算不算交了。</p></div>';
   }
 
-  html += '<div class="card"><h2 style="color:#94a3b8">合计<span class="n">' + (交了.length + 没交.length + 看不懂.length) + ' 人</span></h2></div>';
+  html += '<div class="card"><h2 style="color:#94a3b8">合计<span class="n">' + (交了.length + 没交.length + 看不懂.length) + ' 人</span></h2>';
+  if (跳过.length){
+    html += '<p style="color:#64748b;font-size:13px;margin-top:6px">已跳过汇总行：' + 跳过.join('、') + '（不当作学生）</p>';
+  }
+  html += '</div>';
 
   out.innerHTML = html;
 
